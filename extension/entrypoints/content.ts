@@ -1,38 +1,48 @@
-const BADGE_ID = 'lpp-loaded-badge';
+import { getContentScriptMatches, getSiteForUrl } from '@/adapters/registry';
+import {
+  isExtensionEnabled,
+  removeBadge,
+  showBadge,
+} from '@/utils/badge';
 
 export default defineContentScript({
-  matches: ['*://*/*'],
+  matches: getContentScriptMatches(),
   runAt: 'document_idle',
   main() {
-    if (document.getElementById(BADGE_ID)) return;
+    let lastUrl = location.href;
 
-    const host = document.createElement('div');
-    host.id = BADGE_ID;
-    const shadow = host.attachShadow({ mode: 'open' });
-
-    const style = document.createElement('style');
-    style.textContent = `
-      :host { all: initial; }
-      .badge {
-        position: fixed;
-        bottom: 16px;
-        right: 16px;
-        z-index: 2147483646;
-        padding: 8px 12px;
-        border-radius: 8px;
-        background: #0f766e;
-        color: #fff;
-        font: 600 13px/1.2 system-ui, sans-serif;
-        box-shadow: 0 4px 12px rgba(0,0,0,.2);
-        pointer-events: none;
+    async function updateBadge() {
+      const site = getSiteForUrl(location.href);
+      if (!site || !(await isExtensionEnabled())) {
+        removeBadge();
+        return;
       }
-    `;
 
-    const badge = document.createElement('div');
-    badge.className = 'badge';
-    badge.textContent = 'List Price Plus loaded';
+      showBadge(`List Price Plus · ${site.label}`);
+    }
 
-    shadow.append(style, badge);
-    document.documentElement.append(host);
+    void updateBadge();
+
+    browser.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && 'enabled' in changes) {
+        void updateBadge();
+      }
+    });
+
+    browser.runtime.onMessage.addListener((message) => {
+      if (message?.type === 'lpp-settings-changed') {
+        void updateBadge();
+      }
+    });
+
+    window.addEventListener('popstate', () => void updateBadge());
+
+    // Zillow navigates via pushState between listings
+    const observer = new MutationObserver(() => {
+      if (location.href === lastUrl) return;
+      lastUrl = location.href;
+      void updateBadge();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   },
 });

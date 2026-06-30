@@ -37,10 +37,10 @@ Phased plan from "Hello World" extension → multi-site data extraction → cost
 
 | Task | Notes |
 |------|-------|
-| [ ] MV3 manifest via WXT | `action`, `background` service worker |
-| [ ] Content script injects a small badge: **"List Price Plus loaded"** | Fixed corner chip, Shadow DOM |
-| [ ] Popup with version + "enabled" toggle | `chrome.storage.local` |
-| [ ] Build artifact: `.output/chrome-mv3` | Document load-unpacked steps in `extension/README.md` |
+| [x] MV3 manifest via WXT | `action`, `background` service worker |
+| [x] Content script injects a small badge: **"List Price Plus loaded"** | Fixed corner chip, Shadow DOM |
+| [x] Popup with version + "enabled" toggle | `chrome.storage.local` |
+| [x] Build artifact: `.output/chrome-mv3` | Document load-unpacked steps in `extension/README.md` |
 
 **Exit:** Extension installs in Chrome and shows the badge on any site.
 
@@ -54,10 +54,10 @@ Phased plan from "Hello World" extension → multi-site data extraction → cost
 
 | Task | Notes |
 |------|-------|
-| [ ] URL matcher: `*://*.zillow.com/homedetails/*` (and `/homedetails/` variants) | WXT `defineContentScript` matches |
-| [ ] Site registry: `{ id, host, pathPattern, adapter }` | Single config file drives matches |
-| [ ] On non-Zillow pages: no injection (or popup says "Go to a listing") | |
-| [ ] On Zillow listing: replace generic badge with **"List Price Plus · Zillow"** | |
+| [x] URL matcher: `*://*.zillow.com/homedetails/*` (and `/homedetails/` variants) | WXT `defineContentScript` matches |
+| [x] Site registry: `{ id, host, pathPattern, adapter }` | `extension/adapters/registry.ts` |
+| [x] On non-Zillow pages: no injection (or popup says "Go to a listing") | |
+| [x] On Zillow listing: replace generic badge with **"List Price Plus · Zillow"** | |
 
 **Exit:** Badge only on Zillow listing pages; nowhere else.
 

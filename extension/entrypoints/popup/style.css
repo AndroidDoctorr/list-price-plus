@@ -32,9 +32,23 @@ h1 {
 }
 
 .status {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 0.8125rem;
   color: #64748b;
+}
+
+.page-status {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.page-status[data-state='active'] {
+  background: #ccfbf1;
+  color: #0f766e;
 }
 
 .version {
