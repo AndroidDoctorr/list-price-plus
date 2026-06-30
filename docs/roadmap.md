@@ -71,12 +71,12 @@ Phased plan from "Hello World" extension → multi-site data extraction → cost
 
 | Task | Notes |
 |------|-------|
-| [ ] WXT multi-browser config | `web-ext.config` / Firefox `browser_specific_settings` |
-| [ ] Test unpacked load: Chrome, Edge, Firefox | Edge uses Chrome build |
-| [ ] Document per-browser quirks | Firefox sidebar vs popup, etc. |
-| [ ] CI job: `wxt build` for all targets | GitHub Actions, no store publish yet |
+| [x] WXT multi-browser config | Firefox `browser_specific_settings` in `wxt.config.ts` |
+| [x] `build:all` script | Chrome + Firefox from one command |
+| [x] Document per-browser load steps | `extension/README.md` |
+| [x] CI job: `wxt build` for all targets | `.github/workflows/ci.yml` |
 
-**Exit:** Three browser builds from one `pnpm build`; manual smoke test on each.
+**Exit:** Three browser builds from one `pnpm build:extension`; manual smoke test on each.
 
 **Effort:** ~1–2 days
 

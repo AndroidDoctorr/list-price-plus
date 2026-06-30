@@ -6,6 +6,7 @@
     "dev": "pnpm --filter list-price-plus-extension dev",
     "dev:web": "pnpm --filter list-price-plus-web dev",
     "build": "pnpm -r build",
+    "build:extension": "pnpm --filter list-price-plus-extension build:all",
     "build:web": "pnpm --filter list-price-plus-web build",
     "compile": "pnpm -r compile",
     "deploy:hosting": "pnpm build:web && firebase deploy --only hosting"

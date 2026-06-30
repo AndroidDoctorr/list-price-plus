@@ -14,15 +14,10 @@ Instead:
    ```
 2. **Your normal Chrome:** open `chrome://extensions`
 3. Enable **Developer mode**
-4. **Load unpacked** → select:
-   ```
-   extension/.output/chrome-mv3-dev
-   ```
-   (Use an absolute path if needed, e.g. `C:\Users\...\list-price-plus\extension\.output\chrome-mv3-dev`)
+4. **Load unpacked** → select `extension/.output/chrome-mv3-dev`
+5. Browse Zillow in **that same Chrome**
 
-5. Browse Zillow in **that same Chrome** — you're logged in, no bot profile, CAPTCHA should behave normally.
-
-**First time only:** load unpacked. After that, `pnpm dev` hot-reloads most code changes automatically. Click **Reload** on `chrome://extensions` only when you add new files or change manifest permissions.
+Click **Reload** on `chrome://extensions` after pulling changes or when adding new manifest permissions.
 
 ### One-off build (no watcher)
 
@@ -30,15 +25,33 @@ Instead:
 pnpm --filter list-price-plus-extension build
 ```
 
-Load unpacked from `extension/.output/chrome-mv3` instead.
+Load unpacked from `extension/.output/chrome-mv3`.
 
-### Firefox
+## Multi-browser builds (Phase 3)
 
-1. `pnpm --filter list-price-plus-extension dev:firefox` (with runner disabled, load manually)
-2. `about:debugging` → **This Firefox** → **Load Temporary Add-on**
-3. Pick `manifest.json` inside `.output/firefox-mv3-dev`
+One source tree; separate output folders per browser:
 
-Use your normal Firefox profile the same way — don't use a throwaway automation window for Zillow.
+| Browser | Build command | Load unpacked from |
+|---------|---------------|-------------------|
+| **Chrome** | `pnpm --filter list-price-plus-extension build` | `.output/chrome-mv3` |
+| **Edge** | same as Chrome | `.output/chrome-mv3` on `edge://extensions` |
+| **Opera** | same as Chrome | `.output/chrome-mv3` on `opera://extensions` |
+| **Firefox** | `pnpm --filter list-price-plus-extension build:firefox` | `.output/firefox-mv2` via `about:debugging` |
+
+Build both targets:
+
+```bash
+pnpm build:extension
+```
+
+### Firefox notes
+
+- **Temporary add-on:** `about:debugging` → This Firefox → Load Temporary Add-on → pick any file in `.output/firefox-mv2` (e.g. `manifest.json`). Removed when Firefox closes.
+- **Gecko ID** is set in `wxt.config.ts` (`list-price-plus@listpriceplus.app`) — required for persistence if you sign the XPI later.
+
+### Edge notes
+
+Edge is Chromium-based. The Chrome build loads directly; no separate build step.
 
 ## Store publishing (later)
 

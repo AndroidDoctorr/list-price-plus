@@ -4,6 +4,10 @@ export function removeBadge(): void {
   document.getElementById(BADGE_HOST_ID)?.remove();
 }
 
+function getMountTarget(): HTMLElement {
+  return document.body ?? document.documentElement;
+}
+
 export function showBadge(label: string): void {
   removeBadge();
 
@@ -12,20 +16,24 @@ export function showBadge(label: string): void {
   const shadow = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
+  // Do not use `all: initial` on :host — it breaks position:fixed inside shadow DOM.
   style.textContent = `
-    :host { all: initial; }
-    .badge {
+    :host {
       position: fixed;
       bottom: 16px;
       right: 16px;
       z-index: 2147483646;
+      pointer-events: none;
+    }
+    .badge {
+      display: block;
       padding: 8px 12px;
       border-radius: 8px;
       background: #0f766e;
       color: #fff;
       font: 600 13px/1.2 system-ui, sans-serif;
-      box-shadow: 0 4px 12px rgba(0,0,0,.2);
-      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
     }
   `;
 
@@ -34,10 +42,10 @@ export function showBadge(label: string): void {
   badge.textContent = label;
 
   shadow.append(style, badge);
-  document.documentElement.append(host);
+  getMountTarget().append(host);
 }
 
 export async function isExtensionEnabled(): Promise<boolean> {
-  const { enabled = true } = await browser.storage.local.get('enabled');
-  return enabled;
+  const { enabled } = await browser.storage.local.get('enabled');
+  return enabled !== false;
 }

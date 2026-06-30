@@ -21,28 +21,38 @@ export default defineContentScript({
       showBadge(`List Price Plus · ${site.label}`);
     }
 
-    void updateBadge();
-
-    browser.storage.onChanged.addListener((changes, area) => {
-      if (area === 'local' && 'enabled' in changes) {
-        void updateBadge();
-      }
-    });
-
-    browser.runtime.onMessage.addListener((message) => {
-      if (message?.type === 'lpp-settings-changed') {
-        void updateBadge();
-      }
-    });
-
-    window.addEventListener('popstate', () => void updateBadge());
-
-    // Zillow navigates via pushState between listings
-    const observer = new MutationObserver(() => {
-      if (location.href === lastUrl) return;
-      lastUrl = location.href;
+    function init() {
       void updateBadge();
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      browser.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && 'enabled' in changes) {
+          void updateBadge();
+        }
+      });
+
+      browser.runtime.onMessage.addListener((message) => {
+        if (message?.type === 'lpp-settings-changed') {
+          void updateBadge();
+        }
+      });
+
+      window.addEventListener('popstate', () => void updateBadge());
+
+      const observer = new MutationObserver(() => {
+        if (location.href === lastUrl) return;
+        lastUrl = location.href;
+        void updateBadge();
+      });
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    if (document.body) {
+      init();
+    } else {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    }
   },
 });

@@ -7,9 +7,10 @@ const pageEl = document.querySelector<HTMLParagraphElement>('#page-status')!;
 const toggleEl = document.querySelector<HTMLInputElement>('#enabled')!;
 
 async function loadSettings() {
-  const { enabled = true } = await browser.storage.local.get('enabled');
-  toggleEl.checked = enabled;
-  statusEl.textContent = enabled ? 'Extension is enabled.' : 'Extension is paused.';
+  const { enabled } = await browser.storage.local.get('enabled');
+  const isEnabled = enabled !== false;
+  toggleEl.checked = isEnabled;
+  statusEl.textContent = isEnabled ? 'Extension is enabled.' : 'Extension is paused.';
 }
 
 async function updatePageStatus() {
