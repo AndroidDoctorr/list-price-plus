@@ -6,11 +6,15 @@ import {
 import type { ExtractionConfidence } from '@/utils/confidence';
 import { scoreExtractionConfidence } from '@/utils/confidence';
 import {
+  buildCostSectionHtml,
+  COST_SECTION_STYLES,
+} from '@/utils/cost-view';
+import {
   EDITABLE_FIELDS,
   formDefaults,
   overridesFromForm,
 } from '@/utils/overrides';
-import type { PropertyFacts } from '@list-price-plus/core';
+import type { CostEstimate, PropertyFacts } from '@list-price-plus/core';
 
 export const PANEL_HOST_ID = 'lpp-listing-panel';
 
@@ -36,6 +40,7 @@ export interface PanelHandlers {
 
 interface PanelHost extends HTMLDivElement {
   __lppHandlers?: PanelHandlers;
+  __lppFactsExpanded?: boolean;
 }
 
 /** Skip Zillow refresh when the only DOM change was our panel mounting. */
@@ -110,8 +115,33 @@ const STYLES = `
     font-weight: 700;
   }
   .icon-btn:hover { background: rgba(255,255,255,0.15); }
-  .body { padding: 10px 12px 12px; }
+  .body { padding: 0; }
   .body[hidden] { display: none; }
+  .body-scroll {
+    max-height: min(70vh, calc(100dvh - 100px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px 12px 12px;
+  }
+  .facts-section { margin: 0; }
+  .facts-section[open] .facts-summary { margin-bottom: 8px; }
+  .facts-summary {
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    list-style: none;
+  }
+  .facts-summary::-webkit-details-marker { display: none; }
+  .facts-summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  .facts-section[open] > .facts-summary::before { transform: rotate(90deg); }
+  .facts-inner { padding-top: 2px; }
   .meta { margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .subtitle {
     margin: 0;
@@ -175,6 +205,7 @@ const STYLES = `
     border: 1px solid #cbd5e1;
     border-radius: 4px;
   }
+  ${COST_SECTION_STYLES}
 `;
 
 function buildViewTable(facts: PropertyFacts): HTMLTableElement {
@@ -207,30 +238,60 @@ function syncEditFormFields(form: HTMLFormElement, facts: PropertyFacts): void {
   }
 }
 
-function updateErrorsBlock(body: Element, errors: string[]): void {
-  body.querySelector('.errors')?.remove();
+function updateErrorsBlock(factsInner: Element, errors: string[]): void {
+  factsInner.querySelector('.errors')?.remove();
   if (errors.length === 0) return;
 
   const errorsEl = document.createElement('p');
   errorsEl.className = 'errors';
   errorsEl.textContent = errors.slice(0, 4).join(' · ');
-  const actions = body.querySelector('.actions');
-  if (actions) body.insertBefore(errorsEl, actions);
-  else body.append(errorsEl);
+  const actions = factsInner.querySelector('.view-actions');
+  if (actions) factsInner.insertBefore(errorsEl, actions);
+  else factsInner.append(errorsEl);
+}
+
+function syncCostSection(bodyScroll: Element, estimate?: CostEstimate): void {
+  bodyScroll.querySelector('.cost-section')?.remove();
+  if (!estimate) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildCostSectionHtml(estimate);
+  const section = wrapper.firstElementChild;
+  if (section) {
+    section.classList.add('cost-section-first');
+    bodyScroll.insertBefore(section, bodyScroll.firstChild);
+  }
+}
+
+function syncFactsSectionOpen(
+  factsSection: HTMLDetailsElement | null,
+  costEstimate: CostEstimate | undefined,
+  editing: boolean,
+  userExpanded: boolean,
+): void {
+  if (!factsSection) return;
+  if (editing || userExpanded) {
+    factsSection.open = true;
+    return;
+  }
+  factsSection.open = !costEstimate;
 }
 
 function updatePanelContent(
   shadow: ShadowRoot,
   result: ExtractResult,
   siteLabel: string,
+  costEstimate?: CostEstimate,
 ): void {
   const confidence = scoreExtractionConfidence(result.facts);
   const editing = shadow.querySelector('.edit-form:not([hidden])') !== null;
+  const factsSection = shadow.querySelector('.facts-section');
+  const host = shadow.host as PanelHost;
 
   shadow.querySelector('.title')!.textContent = `List Price Plus · ${siteLabel}`;
 
-  const subtitle = shadow.querySelector('.subtitle')!;
-  subtitle.textContent = `Property facts · adapter v${result.adapterVersion}`;
+  shadow.querySelector('.facts-summary')!.textContent =
+    `Property facts · adapter v${result.adapterVersion}`;
 
   const badge = shadow.querySelector('.confidence')!;
   badge.className = `confidence ${confidenceClass(confidence.level)}`;
@@ -246,8 +307,16 @@ function updatePanelContent(
     }
   }
 
-  const body = shadow.querySelector('.body');
-  if (body) updateErrorsBlock(body, result.errors);
+  const factsInner = shadow.querySelector('.facts-inner');
+  const bodyScroll = shadow.querySelector('.body-scroll');
+  if (factsInner) updateErrorsBlock(factsInner, result.errors);
+  if (bodyScroll) syncCostSection(bodyScroll, costEstimate);
+  syncFactsSectionOpen(
+    factsSection instanceof HTMLDetailsElement ? factsSection : null,
+    costEstimate,
+    editing,
+    host.__lppFactsExpanded ?? false,
+  );
 }
 
 function wirePanelEvents(shadow: ShadowRoot, host: PanelHost): void {
@@ -259,6 +328,13 @@ function wirePanelEvents(shadow: ShadowRoot, host: PanelHost): void {
   const cancelBtn = shadow.querySelector('.cancel-btn')!;
   const resetBtn = shadow.querySelector('.reset-btn')!;
 
+  const factsSection = shadow.querySelector('.facts-section');
+  factsSection?.addEventListener('toggle', () => {
+    if (factsSection instanceof HTMLDetailsElement) {
+      host.__lppFactsExpanded = factsSection.open;
+    }
+  });
+
   collapseBtn.addEventListener('click', () => {
     const expanded = collapseBtn.getAttribute('aria-expanded') === 'true';
     const nowCollapsed = expanded;
@@ -269,6 +345,11 @@ function wirePanelEvents(shadow: ShadowRoot, host: PanelHost): void {
   });
 
   editBtn.addEventListener('click', () => {
+    const factsSectionEl = shadow.querySelector('.facts-section');
+    if (factsSectionEl instanceof HTMLDetailsElement) {
+      factsSectionEl.open = true;
+      host.__lppFactsExpanded = true;
+    }
     host.__lppHandlers?.onEditingChange?.(true);
     (viewTable as HTMLElement).hidden = true;
     editForm.hidden = false;
@@ -302,11 +383,13 @@ function createPanel(
   result: ExtractResult,
   siteLabel: string,
   handlers: PanelHandlers,
+  costEstimate?: CostEstimate,
 ): PanelHost {
   const confidence = scoreExtractionConfidence(result.facts);
   const host = document.createElement('div') as PanelHost;
   host.id = PANEL_HOST_ID;
   host.__lppHandlers = handlers;
+  host.__lppFactsExpanded = false;
 
   const shadow = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
@@ -323,9 +406,22 @@ function createPanel(
 
   const body = document.createElement('div');
   body.className = 'body';
-  body.innerHTML = `
+
+  const bodyScroll = document.createElement('div');
+  bodyScroll.className = 'body-scroll';
+
+  const factsSection = document.createElement('details');
+  factsSection.className = 'facts-section';
+  factsSection.open = !costEstimate;
+
+  const factsSummary = document.createElement('summary');
+  factsSummary.className = 'facts-summary';
+  factsSummary.textContent = `Property facts · adapter v${result.adapterVersion}`;
+
+  const factsInner = document.createElement('div');
+  factsInner.className = 'facts-inner';
+  factsInner.innerHTML = `
     <div class="meta">
-      <p class="subtitle">Property facts · adapter v${result.adapterVersion}</p>
       <span class="confidence ${confidenceClass(confidence.level)}">${confidence.level} confidence</span>
     </div>
     <p class="summary">${confidence.summary}</p>`;
@@ -385,14 +481,18 @@ function createPanel(
   editForm.append(formActions);
 
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'actions view-actions';
   actions.innerHTML = `
     <button type="button" class="btn edit-btn">Edit facts</button>
     <button type="button" class="btn reset-btn">Reset manual edits</button>`;
 
-  body.append(viewTable, editForm, actions);
-  updateErrorsBlock(body, result.errors);
+  factsInner.append(viewTable, editForm, actions);
+  factsSection.append(factsSummary, factsInner);
+  bodyScroll.append(factsSection);
+  updateErrorsBlock(factsInner, result.errors);
+  syncCostSection(bodyScroll, costEstimate);
 
+  body.append(bodyScroll);
   shell.append(header, body);
   shadow.append(style, shell);
   wirePanelEvents(shadow, host);
@@ -408,15 +508,16 @@ export function showListingPanel(
   result: ExtractResult,
   siteLabel: string,
   handlers: PanelHandlers,
+  costEstimate?: CostEstimate,
 ): void {
   const existing = document.getElementById(PANEL_HOST_ID) as PanelHost | null;
 
   if (existing?.shadowRoot) {
     existing.__lppHandlers = handlers;
-    updatePanelContent(existing.shadowRoot, result, siteLabel);
+    updatePanelContent(existing.shadowRoot, result, siteLabel, costEstimate);
     return;
   }
 
-  const host = createPanel(result, siteLabel, handlers);
+  const host = createPanel(result, siteLabel, handlers, costEstimate);
   (document.body ?? document.documentElement).append(host);
 }

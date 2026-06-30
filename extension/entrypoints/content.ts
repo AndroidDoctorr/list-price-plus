@@ -7,11 +7,13 @@ import {
   loadOverridesForUrl,
   saveOverridesForUrl,
 } from '@/utils/overrides';
+import { loadUserProfile } from '@/utils/profile-storage';
 import {
   isOnlyPanelMountMutation,
   removeListingPanel,
   showListingPanel,
 } from '@/utils/panel';
+import { estimateMonthlyCosts } from '@list-price-plus/core';
 
 export default defineContentScript({
   matches: getContentScriptMatches(),
@@ -20,7 +22,6 @@ export default defineContentScript({
     let lastUrl = location.href;
     let extractTimer: number | undefined;
     let isEditingFacts = false;
-    let isPanelCollapsed = false;
     let pendingRefresh = false;
 
     async function refresh() {
@@ -47,6 +48,9 @@ export default defineContentScript({
       const facts = applyOverrides(extracted.facts, overrides);
       const result = { ...extracted, facts };
 
+      const profile = await loadUserProfile();
+      const costEstimate = estimateMonthlyCosts(facts, profile);
+
       showListingPanel(result, site.label, {
         onEditingChange(editing) {
           isEditingFacts = editing;
@@ -55,7 +59,6 @@ export default defineContentScript({
           }
         },
         onCollapsedChange(collapsed) {
-          isPanelCollapsed = collapsed;
           if (!collapsed && pendingRefresh) {
             void refresh();
           }
@@ -69,7 +72,7 @@ export default defineContentScript({
           await clearOverridesForUrl(location.href);
           await refresh();
         },
-      });
+      }, costEstimate);
     }
 
     function scheduleRefresh() {
@@ -85,7 +88,12 @@ export default defineContentScript({
       void refresh();
 
       browser.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && ('enabled' in changes || 'listingOverrides' in changes)) {
+        if (
+          area === 'local' &&
+          ('enabled' in changes ||
+            'listingOverrides' in changes ||
+            'userProfile' in changes)
+        ) {
           if (isEditingFacts) {
             pendingRefresh = true;
             return;
@@ -102,7 +110,6 @@ export default defineContentScript({
 
       window.addEventListener('popstate', () => {
         isEditingFacts = false;
-        isPanelCollapsed = false;
         scheduleRefresh();
       });
 
@@ -112,7 +119,6 @@ export default defineContentScript({
         if (location.href !== lastUrl) {
           lastUrl = location.href;
           isEditingFacts = false;
-          isPanelCollapsed = false;
           scheduleRefresh();
           return;
         }

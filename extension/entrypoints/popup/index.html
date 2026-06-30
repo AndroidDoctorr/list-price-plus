@@ -10,13 +10,52 @@
     <main class="popup">
       <h1>List Price Plus</h1>
       <p class="tagline">True property costs on listing sites.</p>
+
       <label class="toggle">
         <input id="enabled" type="checkbox" checked />
         <span>Enabled</span>
       </label>
       <p id="status" class="status">Extension is enabled.</p>
       <p id="page-status" class="page-status">Checking current page…</p>
-      <p class="version">v0.0.1 · dev</p>
+
+      <section class="profile-section">
+        <h2>Your assumptions</h2>
+
+        <label class="field">
+          <span>Spending style</span>
+          <select id="spendingStyle">
+            <option value="thrifty">Thrifty</option>
+            <option value="standard" selected>Standard</option>
+            <option value="comfortable">Comfortable</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Credit tier</span>
+          <select id="creditTier">
+            <option value="excellent">Excellent (760+)</option>
+            <option value="good" selected>Good (700–759)</option>
+            <option value="fair">Fair (640–699)</option>
+            <option value="poor">Poor (&lt;640)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Down payment %</span>
+          <input id="downPayment" type="number" min="0" max="100" step="1" value="20" />
+        </label>
+
+        <label class="field">
+          <span>Loan term</span>
+          <select id="loanTerm">
+            <option value="30" selected>30 years</option>
+            <option value="20">20 years</option>
+            <option value="15">15 years</option>
+          </select>
+        </label>
+      </section>
+
+      <p class="version">v0.1.0</p>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

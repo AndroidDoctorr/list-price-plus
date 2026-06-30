@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck core
         run: pnpm --filter @list-price-plus/core compile
 
+      - name: Test core engine
+        run: pnpm --filter @list-price-plus/core test
+
       - name: Build web
         run: pnpm --filter list-price-plus-web build
 

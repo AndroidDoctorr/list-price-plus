@@ -61,14 +61,13 @@ Edge is Chromium-based. The Chrome build loads directly; no separate build step.
 | Firefox | AMO | Manual review, no fee |
 | Edge | Partner Center | Often reuses Chrome package |
 
-## Current behavior (Phase 5)
+## Current behavior (Phase 6)
 
-- Everything from Phase 4, plus:
-- **Confidence badge** — high / medium / low + short summary
-- **Edit facts** — fix price, sqft, tax, pool, etc.; saved per listing URL
-- **Reset manual edits** — revert to extracted-only data
-- Manual QA: [docs/extraction-checklist.md](../docs/extraction-checklist.md)
+- Property facts panel + **estimated monthly cost** (mortgage, tax, insurance, utilities, maintenance, capex reserve, pool)
+- Expandable **monthly breakdown** and **upcoming major expenses**
+- Popup **Your assumptions**: spending style, credit tier, down payment %, loan term
+- Change assumptions → listing panel updates on refresh
 
-Run tests: `pnpm --filter list-price-plus-extension test`
+Run tests: `pnpm --filter @list-price-plus/core test` · `pnpm --filter list-price-plus-extension test`
 
 See [docs/roadmap.md](../docs/roadmap.md) for next phases.

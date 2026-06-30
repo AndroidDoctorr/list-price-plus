@@ -150,11 +150,11 @@ Start FC Tucker as one concrete broker site. RE/MAX may need a **single regional
 
 | Task | Notes |
 |------|-------|
-| [ ] Implement `estimateMonthlyCosts` per [cost-model.md](cost-model.md) | Vitest golden files |
-| [ ] Wire extension panel → core | Show breakdown accordion |
-| [ ] Popup profiles: credit tier, thrifty/standard, down payment | |
-| [ ] Capex timeline section | Roof, HVAC, WH, pool |
-| [ ] Disclaimer + confidence badge | |
+| [x] Implement `estimateMonthlyCosts` per [cost-model.md](cost-model.md) | Vitest in `packages/core` |
+| [x] Wire extension panel → core | Monthly total + breakdown + capex |
+| [x] Popup profiles: credit tier, thrifty/standard, down payment | `userProfile` in storage |
+| [x] Capex timeline section | Upcoming major expenses |
+| [x] Disclaimer + confidence badge | On cost estimate |
 
 **Exit:** Zillow listing shows a plausible monthly total and category breakdown.
 

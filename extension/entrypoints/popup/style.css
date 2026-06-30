@@ -5,7 +5,7 @@
 
 body {
   margin: 0;
-  min-width: 280px;
+  min-width: 300px;
 }
 
 .popup {
@@ -51,8 +51,42 @@ h1 {
   color: #0f766e;
 }
 
+.profile-section {
+  margin: 12px 0;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.profile-section h2 {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+}
+
+.field span {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.field select,
+.field input {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  color: #0f172a;
+}
+
 .version {
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 0.75rem;
   color: #94a3b8;
 }
