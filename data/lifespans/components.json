@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "description": "Draft component lifespans and replacement cost bands (USD). Mid values are planning defaults.",
+    "version": "0.1.0"
+  },
+  "roof_asphalt_shingle": {
+    "lifespanYears": 25,
+    "replacementCostPerSqft": { "low": 4, "mid": 5.5, "high": 8 }
+  },
+  "hvac_split_system": {
+    "lifespanYears": 15,
+    "replacementCostFlat": { "low": 5000, "mid": 8500, "high": 14000 }
+  },
+  "water_heater_tank": {
+    "lifespanYears": 10,
+    "replacementCostFlat": { "low": 900, "mid": 1400, "high": 2200 }
+  },
+  "water_heater_tankless": {
+    "lifespanYears": 18,
+    "replacementCostFlat": { "low": 2500, "mid": 3800, "high": 5500 }
+  },
+  "pool_pump": {
+    "lifespanYears": 8,
+    "replacementCostFlat": { "low": 400, "mid": 750, "high": 1200 }
+  },
+  "pool_liner_vinyl": {
+    "lifespanYears": 12,
+    "replacementCostFlat": { "low": 3500, "mid": 5500, "high": 9000 }
+  },
+  "septic_system": {
+    "lifespanYears": 30,
+    "replacementCostFlat": { "low": 8000, "mid": 15000, "high": 25000 }
+  },
+  "well_pump": {
+    "lifespanYears": 12,
+    "replacementCostFlat": { "low": 800, "mid": 1500, "high": 2800 }
+  }
+}

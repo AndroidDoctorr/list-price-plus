@@ -1,0 +1,16 @@
+{
+  "name": "list-price-plus",
+  "private": true,
+  "description": "Realistic monthly property cost estimates on real estate listing sites",
+  "scripts": {
+    "dev": "pnpm --filter list-price-plus-extension dev",
+    "dev:web": "pnpm --filter list-price-plus-web dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter list-price-plus-web build",
+    "compile": "pnpm -r compile",
+    "deploy:hosting": "pnpm build:web && firebase deploy --only hosting"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

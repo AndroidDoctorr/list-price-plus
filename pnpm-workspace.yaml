@@ -1,0 +1,8 @@
+packages:
+  - 'packages/*'
+  - 'extension'
+  - 'web'
+
+allowBuilds:
+  esbuild: true
+  spawn-sync: true
