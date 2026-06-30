@@ -7,7 +7,11 @@ import {
   loadOverridesForUrl,
   saveOverridesForUrl,
 } from '@/utils/overrides';
-import { removeListingPanel, showListingPanel } from '@/utils/panel';
+import {
+  isOnlyPanelMountMutation,
+  removeListingPanel,
+  showListingPanel,
+} from '@/utils/panel';
 
 export default defineContentScript({
   matches: getContentScriptMatches(),
@@ -15,8 +19,17 @@ export default defineContentScript({
   main() {
     let lastUrl = location.href;
     let extractTimer: number | undefined;
+    let isEditingFacts = false;
+    let isPanelCollapsed = false;
+    let pendingRefresh = false;
 
     async function refresh() {
+      if (isEditingFacts) {
+        pendingRefresh = true;
+        return;
+      }
+      pendingRefresh = false;
+
       const site = getSiteForUrl(location.href);
       if (!site || !(await isExtensionEnabled())) {
         removeListingPanel();
@@ -35,6 +48,18 @@ export default defineContentScript({
       const result = { ...extracted, facts };
 
       showListingPanel(result, site.label, {
+        onEditingChange(editing) {
+          isEditingFacts = editing;
+          if (!editing && pendingRefresh) {
+            void refresh();
+          }
+        },
+        onCollapsedChange(collapsed) {
+          isPanelCollapsed = collapsed;
+          if (!collapsed && pendingRefresh) {
+            void refresh();
+          }
+        },
         onSaveOverrides: async (patch) => {
           const current = await loadOverridesForUrl(location.href);
           await saveOverridesForUrl(location.href, { ...current, ...patch });
@@ -48,8 +73,12 @@ export default defineContentScript({
     }
 
     function scheduleRefresh() {
+      if (isEditingFacts) {
+        pendingRefresh = true;
+        return;
+      }
       if (extractTimer) window.clearTimeout(extractTimer);
-      extractTimer = window.setTimeout(() => void refresh(), 350);
+      extractTimer = window.setTimeout(() => void refresh(), 800);
     }
 
     function init() {
@@ -57,21 +86,33 @@ export default defineContentScript({
 
       browser.storage.onChanged.addListener((changes, area) => {
         if (area === 'local' && ('enabled' in changes || 'listingOverrides' in changes)) {
+          if (isEditingFacts) {
+            pendingRefresh = true;
+            return;
+          }
           void refresh();
         }
       });
 
       browser.runtime.onMessage.addListener((message) => {
         if (message?.type === 'lpp-settings-changed') {
-          void refresh();
+          scheduleRefresh();
         }
       });
 
-      window.addEventListener('popstate', scheduleRefresh);
+      window.addEventListener('popstate', () => {
+        isEditingFacts = false;
+        isPanelCollapsed = false;
+        scheduleRefresh();
+      });
 
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver((mutations) => {
+        if (isOnlyPanelMountMutation(mutations)) return;
+
         if (location.href !== lastUrl) {
           lastUrl = location.href;
+          isEditingFacts = false;
+          isPanelCollapsed = false;
           scheduleRefresh();
           return;
         }
@@ -82,8 +123,8 @@ export default defineContentScript({
         subtree: true,
       });
 
-      window.setTimeout(() => void refresh(), 1500);
-      window.setTimeout(() => void refresh(), 4000);
+      window.setTimeout(() => scheduleRefresh(), 2000);
+      window.setTimeout(() => scheduleRefresh(), 5000);
     }
 
     if (document.body) {

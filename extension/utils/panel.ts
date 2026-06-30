@@ -12,7 +12,7 @@ import {
 } from '@/utils/overrides';
 import type { PropertyFacts } from '@list-price-plus/core';
 
-const PANEL_HOST_ID = 'lpp-listing-panel';
+export const PANEL_HOST_ID = 'lpp-listing-panel';
 
 const DISPLAY_FIELDS: (keyof PropertyFacts)[] = [
   'listPrice',
@@ -30,6 +30,29 @@ const DISPLAY_FIELDS: (keyof PropertyFacts)[] = [
 export interface PanelHandlers {
   onSaveOverrides: (overrides: Partial<PropertyFacts>) => Promise<void>;
   onResetOverrides: () => Promise<void>;
+  onEditingChange?: (editing: boolean) => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+interface PanelHost extends HTMLDivElement {
+  __lppHandlers?: PanelHandlers;
+}
+
+/** Skip Zillow refresh when the only DOM change was our panel mounting. */
+export function isOnlyPanelMountMutation(mutations: MutationRecord[]): boolean {
+  let sawPanelNode = false;
+
+  for (const mutation of mutations) {
+    for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+      if (node instanceof Element && node.id === PANEL_HOST_ID) {
+        sawPanelNode = true;
+        continue;
+      }
+      return false;
+    }
+  }
+
+  return sawPanelNode;
 }
 
 function provenanceLabel(
@@ -173,24 +196,153 @@ function buildViewTable(facts: PropertyFacts): HTMLTableElement {
   return table;
 }
 
-function buildEditForm(facts: PropertyFacts): {
-  form: HTMLFormElement;
-  saveBtn: HTMLButtonElement;
-  cancelBtn: HTMLButtonElement;
-} {
-  const form = document.createElement('form');
-  form.className = 'edit-form';
-
+function syncEditFormFields(form: HTMLFormElement, facts: PropertyFacts): void {
   const defaults = formDefaults(facts);
-  const table = document.createElement('table');
-  const tbody = document.createElement('tbody');
+  for (const key of EDITABLE_FIELDS) {
+    const field = form.elements.namedItem(key);
+    if (!field) continue;
+    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement) {
+      field.value = defaults[key] ?? '';
+    }
+  }
+}
 
+function updateErrorsBlock(body: Element, errors: string[]): void {
+  body.querySelector('.errors')?.remove();
+  if (errors.length === 0) return;
+
+  const errorsEl = document.createElement('p');
+  errorsEl.className = 'errors';
+  errorsEl.textContent = errors.slice(0, 4).join(' · ');
+  const actions = body.querySelector('.actions');
+  if (actions) body.insertBefore(errorsEl, actions);
+  else body.append(errorsEl);
+}
+
+function updatePanelContent(
+  shadow: ShadowRoot,
+  result: ExtractResult,
+  siteLabel: string,
+): void {
+  const confidence = scoreExtractionConfidence(result.facts);
+  const editing = shadow.querySelector('.edit-form:not([hidden])') !== null;
+
+  shadow.querySelector('.title')!.textContent = `List Price Plus · ${siteLabel}`;
+
+  const subtitle = shadow.querySelector('.subtitle')!;
+  subtitle.textContent = `Property facts · adapter v${result.adapterVersion}`;
+
+  const badge = shadow.querySelector('.confidence')!;
+  badge.className = `confidence ${confidenceClass(confidence.level)}`;
+  badge.textContent = `${confidence.level} confidence`;
+
+  shadow.querySelector('.summary')!.textContent = confidence.summary;
+
+  if (!editing) {
+    shadow.querySelector('.view-table')?.replaceWith(buildViewTable(result.facts));
+    const form = shadow.querySelector('.edit-form');
+    if (form instanceof HTMLFormElement) {
+      syncEditFormFields(form, result.facts);
+    }
+  }
+
+  const body = shadow.querySelector('.body');
+  if (body) updateErrorsBlock(body, result.errors);
+}
+
+function wirePanelEvents(shadow: ShadowRoot, host: PanelHost): void {
+  const body = shadow.querySelector('.body')!;
+  const collapseBtn = shadow.querySelector('.collapse-btn')!;
+  const viewTable = shadow.querySelector('.view-table')!;
+  const editForm = shadow.querySelector('.edit-form') as HTMLFormElement;
+  const editBtn = shadow.querySelector('.edit-btn')!;
+  const cancelBtn = shadow.querySelector('.cancel-btn')!;
+  const resetBtn = shadow.querySelector('.reset-btn')!;
+
+  collapseBtn.addEventListener('click', () => {
+    const expanded = collapseBtn.getAttribute('aria-expanded') === 'true';
+    const nowCollapsed = expanded;
+    collapseBtn.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
+    collapseBtn.textContent = nowCollapsed ? '+' : '−';
+    body.toggleAttribute('hidden', nowCollapsed);
+    host.__lppHandlers?.onCollapsedChange?.(nowCollapsed);
+  });
+
+  editBtn.addEventListener('click', () => {
+    host.__lppHandlers?.onEditingChange?.(true);
+    (viewTable as HTMLElement).hidden = true;
+    editForm.hidden = false;
+    (editBtn as HTMLElement).hidden = true;
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    host.__lppHandlers?.onEditingChange?.(false);
+    (viewTable as HTMLElement).hidden = false;
+    editForm.hidden = true;
+    (editBtn as HTMLElement).hidden = false;
+  });
+
+  editForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    host.__lppHandlers?.onEditingChange?.(false);
+    const overrides = overridesFromForm(new FormData(editForm));
+    void host.__lppHandlers?.onSaveOverrides(overrides).then(() => {
+      (viewTable as HTMLElement).hidden = false;
+      editForm.hidden = true;
+      (editBtn as HTMLElement).hidden = false;
+    });
+  });
+
+  resetBtn.addEventListener('click', () => {
+    void host.__lppHandlers?.onResetOverrides();
+  });
+}
+
+function createPanel(
+  result: ExtractResult,
+  siteLabel: string,
+  handlers: PanelHandlers,
+): PanelHost {
+  const confidence = scoreExtractionConfidence(result.facts);
+  const host = document.createElement('div') as PanelHost;
+  host.id = PANEL_HOST_ID;
+  host.__lppHandlers = handlers;
+
+  const shadow = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = STYLES;
+
+  const shell = document.createElement('div');
+  shell.className = 'shell';
+
+  const header = document.createElement('header');
+  header.className = 'header';
+  header.innerHTML = `
+    <span class="title">List Price Plus · ${siteLabel}</span>
+    <button type="button" class="icon-btn collapse-btn" aria-expanded="true" title="Collapse">−</button>`;
+
+  const body = document.createElement('div');
+  body.className = 'body';
+  body.innerHTML = `
+    <div class="meta">
+      <p class="subtitle">Property facts · adapter v${result.adapterVersion}</p>
+      <span class="confidence ${confidenceClass(confidence.level)}">${confidence.level} confidence</span>
+    </div>
+    <p class="summary">${confidence.summary}</p>`;
+
+  const viewTable = buildViewTable(result.facts);
+  const editForm = document.createElement('form');
+  editForm.className = 'edit-form';
+  editForm.hidden = true;
+
+  const defaults = formDefaults(result.facts);
+  const editTable = document.createElement('table');
+  const tbody = document.createElement('tbody');
   for (const key of EDITABLE_FIELDS) {
     const tr = document.createElement('tr');
     const th = document.createElement('th');
     th.scope = 'row';
     th.textContent = formatFieldLabel(key);
-
     const td = document.createElement('td');
     td.colSpan = 2;
 
@@ -219,28 +371,33 @@ function buildEditForm(facts: PropertyFacts): {
       input.value = defaults[key] ?? '';
       td.append(input);
     }
-
     tr.append(th, td);
     tbody.append(tr);
   }
-
-  table.append(tbody);
-  form.append(table);
+  editTable.append(tbody);
+  editForm.append(editTable);
 
   const formActions = document.createElement('div');
   formActions.className = 'actions';
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'submit';
-  saveBtn.className = 'btn btn-primary';
-  saveBtn.textContent = 'Save';
-  const cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button';
-  cancelBtn.className = 'btn';
-  cancelBtn.textContent = 'Cancel';
-  formActions.append(saveBtn, cancelBtn);
-  form.append(formActions);
+  formActions.innerHTML = `
+    <button type="submit" class="btn btn-primary">Save</button>
+    <button type="button" class="btn cancel-btn">Cancel</button>`;
+  editForm.append(formActions);
 
-  return { form, saveBtn, cancelBtn };
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.innerHTML = `
+    <button type="button" class="btn edit-btn">Edit facts</button>
+    <button type="button" class="btn reset-btn">Reset manual edits</button>`;
+
+  body.append(viewTable, editForm, actions);
+  updateErrorsBlock(body, result.errors);
+
+  shell.append(header, body);
+  shadow.append(style, shell);
+  wirePanelEvents(shadow, host);
+
+  return host;
 }
 
 export function removeListingPanel(): void {
@@ -252,110 +409,14 @@ export function showListingPanel(
   siteLabel: string,
   handlers: PanelHandlers,
 ): void {
-  removeListingPanel();
+  const existing = document.getElementById(PANEL_HOST_ID) as PanelHost | null;
 
-  const confidence = scoreExtractionConfidence(result.facts);
-  const host = document.createElement('div');
-  host.id = PANEL_HOST_ID;
-  const shadow = host.attachShadow({ mode: 'open' });
-
-  const style = document.createElement('style');
-  style.textContent = STYLES;
-
-  const shell = document.createElement('div');
-  shell.className = 'shell';
-
-  const header = document.createElement('header');
-  header.className = 'header';
-  const title = document.createElement('span');
-  title.className = 'title';
-  title.textContent = `List Price Plus · ${siteLabel}`;
-  const collapseBtn = document.createElement('button');
-  collapseBtn.type = 'button';
-  collapseBtn.className = 'icon-btn collapse-btn';
-  collapseBtn.title = 'Collapse';
-  collapseBtn.setAttribute('aria-expanded', 'true');
-  collapseBtn.textContent = '−';
-  header.append(title, collapseBtn);
-
-  const body = document.createElement('div');
-  body.className = 'body';
-
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  const subtitle = document.createElement('p');
-  subtitle.className = 'subtitle';
-  subtitle.textContent = `Property facts · adapter v${result.adapterVersion}`;
-  const badge = document.createElement('span');
-  badge.className = `confidence ${confidenceClass(confidence.level)}`;
-  badge.textContent = `${confidence.level} confidence`;
-  meta.append(subtitle, badge);
-
-  const summary = document.createElement('p');
-  summary.className = 'summary';
-  summary.textContent = confidence.summary;
-
-  const viewTable = buildViewTable(result.facts);
-  const { form: editForm, saveBtn, cancelBtn } = buildEditForm(result.facts);
-  editForm.hidden = true;
-
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-
-  const editBtn = document.createElement('button');
-  editBtn.type = 'button';
-  editBtn.className = 'btn';
-  editBtn.textContent = 'Edit facts';
-
-  const resetBtn = document.createElement('button');
-  resetBtn.type = 'button';
-  resetBtn.className = 'btn';
-  resetBtn.textContent = 'Reset manual edits';
-
-  actions.append(editBtn, resetBtn);
-
-  body.append(meta, summary, viewTable, editForm, actions);
-
-  if (result.errors.length > 0) {
-    const errors = document.createElement('p');
-    errors.className = 'errors';
-    errors.textContent = result.errors.slice(0, 4).join(' · ');
-    body.insertBefore(errors, actions);
+  if (existing?.shadowRoot) {
+    existing.__lppHandlers = handlers;
+    updatePanelContent(existing.shadowRoot, result, siteLabel);
+    return;
   }
-  shell.append(header, body);
-  shadow.append(style, shell);
+
+  const host = createPanel(result, siteLabel, handlers);
   (document.body ?? document.documentElement).append(host);
-
-  collapseBtn.addEventListener('click', () => {
-    const expanded = collapseBtn.getAttribute('aria-expanded') === 'true';
-    collapseBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-    collapseBtn.textContent = expanded ? '+' : '−';
-    body.toggleAttribute('hidden', expanded);
-  });
-
-  editBtn.addEventListener('click', () => {
-    viewTable.hidden = true;
-    editForm.hidden = false;
-    editBtn.hidden = true;
-  });
-
-  cancelBtn.addEventListener('click', () => {
-    viewTable.hidden = false;
-    editForm.hidden = true;
-    editBtn.hidden = false;
-  });
-
-  editForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const overrides = overridesFromForm(new FormData(editForm));
-    void handlers.onSaveOverrides(overrides).then(() => {
-      viewTable.hidden = false;
-      editForm.hidden = true;
-      editBtn.hidden = false;
-    });
-  });
-
-  resetBtn.addEventListener('click', () => {
-    void handlers.onResetOverrides();
-  });
 }
