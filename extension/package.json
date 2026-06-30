@@ -2,7 +2,7 @@
   "name": "list-price-plus-extension",
   "description": "List Price Plus browser extension — property cost estimates on listing sites",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -13,10 +13,17 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
+    "test": "vitest run",
     "postinstall": "wxt prepare"
   },
+  "dependencies": {
+    "@list-price-plus/core": "workspace:*"
+  },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "jsdom": "^26.1.0",
     "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
     "wxt": "^0.20.27"
   }
 }

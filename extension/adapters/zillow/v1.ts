@@ -1,0 +1,314 @@
+import type { PropertyFacts } from '@list-price-plus/core';
+
+import type { ExtractResult } from '../types';
+import {
+  detectPoolInText,
+  emptyFacts,
+  firstMatchingNumber,
+  mergeFacts,
+  parseBool,
+  parseEmbeddedJsonScripts,
+  parseJsonLdScripts,
+  parseNumber,
+  walkJson,
+} from '../parse-utils';
+
+export const ADAPTER_ID = 'zillow';
+export const ADAPTER_VERSION = '1';
+
+function fromJsonLd(blocks: unknown[]): Partial<PropertyFacts> {
+  const patch: Partial<PropertyFacts> = { fieldProvenance: {} };
+  const prov = patch.fieldProvenance!;
+
+  for (const block of blocks) {
+    walkJson(block, (obj) => {
+      const type = String(obj['@type'] ?? '');
+      const isListing =
+        type.includes('RealEstateListing') ||
+        type.includes('SingleFamilyResidence') ||
+        type.includes('Apartment') ||
+        type.includes('House');
+
+      if (!isListing && !('offers' in obj) && !('floorSize' in obj)) return;
+
+      if (patch.sqft === undefined && obj.floorSize) {
+        const size = obj.floorSize as Record<string, unknown>;
+        patch.sqft = parseNumber(size.value ?? size);
+        if (patch.sqft) prov.sqft = 'page';
+      }
+
+      if (patch.yearBuilt === undefined && obj.yearBuilt) {
+        patch.yearBuilt = parseNumber(obj.yearBuilt);
+        if (patch.yearBuilt) prov.yearBuilt = 'page';
+      }
+
+      const offers = obj.offers;
+      const offer = Array.isArray(offers) ? offers[0] : offers;
+      if (offer && typeof offer === 'object') {
+        const o = offer as Record<string, unknown>;
+        if (patch.listPrice === undefined) {
+          patch.listPrice = parseNumber(o.price ?? o.lowPrice ?? o.highPrice);
+          if (patch.listPrice) prov.listPrice = 'page';
+        }
+      }
+
+      if (patch.beds === undefined) {
+        patch.beds = parseNumber(
+          obj.numberOfBedrooms ?? obj.numberOfRooms ?? obj.bedrooms,
+        );
+        if (patch.beds) prov.beds = 'page';
+      }
+
+      if (patch.baths === undefined) {
+        patch.baths = parseNumber(
+          obj.numberOfBathroomsTotal ?? obj.numberOfBathrooms ?? obj.bathrooms,
+        );
+        if (patch.baths) prov.baths = 'page';
+      }
+    });
+  }
+
+  return patch;
+}
+
+function fromEmbeddedJson(blobs: unknown[]): Partial<PropertyFacts> {
+  const patch: Partial<PropertyFacts> = { fieldProvenance: {} };
+  const prov = patch.fieldProvenance!;
+
+  for (const blob of blobs) {
+    if (patch.listPrice === undefined) {
+      const price = firstMatchingNumber(blob, [
+        'price',
+        'unformattedPrice',
+        'listPrice',
+        'listPriceValue',
+      ]);
+      if (price !== undefined && price > 10_000) {
+        patch.listPrice = price;
+        prov.listPrice = 'page';
+      }
+    }
+
+    if (patch.sqft === undefined) {
+      const sqft = firstMatchingNumber(blob, [
+        'livingArea',
+        'livingAreaValue',
+        'finishedSqFt',
+        'sqft',
+        'livingAreaSize',
+      ]);
+      if (sqft !== undefined && sqft > 100) {
+        patch.sqft = sqft;
+        prov.sqft = 'page';
+      }
+    }
+
+    if (patch.beds === undefined) {
+      const beds = firstMatchingNumber(blob, ['bedrooms', 'beds', 'bedroomCount']);
+      if (beds !== undefined && beds <= 20) {
+        patch.beds = beds;
+        prov.beds = 'page';
+      }
+    }
+
+    if (patch.baths === undefined) {
+      const baths = firstMatchingNumber(blob, [
+        'bathrooms',
+        'baths',
+        'bathroomCount',
+        'bathroomsFull',
+      ]);
+      if (baths !== undefined && baths <= 20) {
+        patch.baths = baths;
+        prov.baths = 'page';
+      }
+    }
+
+    if (patch.yearBuilt === undefined) {
+      const year = firstMatchingNumber(blob, ['yearBuilt', 'yearBuiltEffective']);
+      if (year !== undefined && year > 1800 && year <= new Date().getFullYear()) {
+        patch.yearBuilt = year;
+        prov.yearBuilt = 'page';
+      }
+    }
+
+    if (patch.lotSqft === undefined) {
+      const lot = firstMatchingNumber(blob, ['lotSize', 'lotAreaValue', 'lotSqft']);
+      if (lot !== undefined && lot > 100) {
+        patch.lotSqft = lot;
+        prov.lotSqft = 'page';
+      }
+    }
+
+    if (patch.annualTax === undefined) {
+      const tax = firstMatchingNumber(blob, [
+        'taxAnnualAmount',
+        'propertyTaxRate',
+        'annualTax',
+        'taxPaid',
+      ]);
+      if (tax !== undefined && tax > 100) {
+        patch.annualTax = tax;
+        prov.annualTax = 'page';
+      }
+    }
+
+    if (patch.hoaMonthly === undefined) {
+      const hoa = firstMatchingNumber(blob, [
+        'monthlyHoaFee',
+        'hoaFee',
+        'hoaMonthlyFee',
+      ]);
+      if (hoa !== undefined) {
+        patch.hoaMonthly = hoa;
+        prov.hoaMonthly = 'page';
+      }
+    }
+
+    if (patch.monthlyRentEstimate === undefined) {
+      const rent = firstMatchingNumber(blob, ['rentZestimate', 'rentEstimate']);
+      if (rent !== undefined && rent > 100) {
+        patch.monthlyRentEstimate = rent;
+        prov.monthlyRentEstimate = 'page';
+      }
+    }
+
+    if (patch.hasPool === undefined) {
+      const POOL_BOOL_KEYS = new Set([
+        'hasPool',
+        'hasPrivatePool',
+        'privatePool',
+        'isPoolPrivate',
+      ]);
+      const POOL_TEXT_KEYS =
+        /^(description|remarks|publicRemarks|propertyDescription|whatILove|interiorFeatures|exteriorFeatures|poolFeatures|homeFeatures|listingDescription)$/i;
+      const SKIP_TEXT_KEYS =
+        /amenit|hoa|association|community|shared|fee|includedFeatures/i;
+
+      walkJson(blob, (obj) => {
+        if (patch.hasPool !== undefined) return;
+
+        for (const key of POOL_BOOL_KEYS) {
+          if (!(key in obj)) continue;
+          const pool = parseBool(obj[key]);
+          if (pool === true) {
+            patch.hasPool = true;
+            prov.hasPool = 'page';
+            return;
+          }
+          if (pool === false) {
+            patch.hasPool = false;
+            prov.hasPool = 'page';
+            return;
+          }
+        }
+
+        for (const [key, value] of Object.entries(obj)) {
+          if (typeof value !== 'string') continue;
+          if (SKIP_TEXT_KEYS.test(key)) continue;
+          if (!POOL_TEXT_KEYS.test(key) && key !== 'pool') continue;
+
+          const signal = detectPoolInText(value);
+          if (signal === 'property') {
+            patch.hasPool = true;
+            prov.hasPool = key === 'description' ? 'inferred' : 'page';
+            return;
+          }
+        }
+      });
+    }
+  }
+
+  return patch;
+}
+
+function fromDom(doc: Document): Partial<PropertyFacts> {
+  const patch: Partial<PropertyFacts> = { fieldProvenance: {} };
+  const prov = patch.fieldProvenance!;
+  const bodyText = doc.body?.innerText || doc.body?.textContent || '';
+
+  if (!patch.listPrice) {
+    const priceEl = doc.querySelector('[data-testid="price"]');
+    const priceText = priceEl?.textContent ?? bodyText.match(/\$[\d,]+/)?.[0];
+    const price = parseNumber(priceText);
+    if (price !== undefined && price > 10_000) {
+      patch.listPrice = price;
+      prov.listPrice = priceEl ? 'page' : 'inferred';
+    }
+  }
+
+  const bedMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*(?:bd|beds?|bedrooms?)\b/i);
+  if (bedMatch && patch.beds === undefined) {
+    patch.beds = parseNumber(bedMatch[1]);
+    if (patch.beds) prov.beds = 'inferred';
+  }
+
+  const bathMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*(?:ba|baths?|bathrooms?)\b/i);
+  if (bathMatch && patch.baths === undefined) {
+    patch.baths = parseNumber(bathMatch[1]);
+    if (patch.baths) prov.baths = 'inferred';
+  }
+
+  const sqftMatch = bodyText.match(/([\d,]+)\s*(?:sq\.?\s*ft|sqft|square feet)\b/i);
+  if (sqftMatch && patch.sqft === undefined) {
+    patch.sqft = parseNumber(sqftMatch[1]);
+    if (patch.sqft) prov.sqft = 'inferred';
+  }
+
+  const yearMatch = bodyText.match(/\b(?:built|year built)[:\s]*(\d{4})\b/i);
+  if (yearMatch && patch.yearBuilt === undefined) {
+    patch.yearBuilt = parseNumber(yearMatch[1]);
+    if (patch.yearBuilt) prov.yearBuilt = 'inferred';
+  }
+
+  // Do not scan full page text for pool — HOA amenity lists cause false positives.
+
+  return patch;
+}
+
+/** Pure extraction — pass a Document (live page or jsdom in tests). */
+export function extractZillowProperty(
+  doc: Document,
+  url: string,
+): ExtractResult {
+  const errors: string[] = [];
+  let facts = emptyFacts('zillow', url);
+
+  try {
+    facts = mergeFacts(facts, fromJsonLd(parseJsonLdScripts(doc)));
+  } catch {
+    errors.push('JSON-LD parse failed');
+  }
+
+  try {
+    facts = mergeFacts(facts, fromEmbeddedJson(parseEmbeddedJsonScripts(doc)));
+  } catch {
+    errors.push('Embedded JSON parse failed');
+  }
+
+  try {
+    facts = mergeFacts(facts, fromDom(doc));
+  } catch {
+    errors.push('DOM parse failed');
+  }
+
+  const required = ['listPrice', 'sqft'] as const;
+  for (const field of required) {
+    if (facts[field] === undefined) {
+      errors.push(`Missing ${field}`);
+    }
+  }
+
+  return {
+    facts,
+    errors,
+    adapterId: ADAPTER_ID,
+    adapterVersion: ADAPTER_VERSION,
+  };
+}
+
+export const zillowAdapter = {
+  id: ADAPTER_ID,
+  version: ADAPTER_VERSION,
+  extract: extractZillowProperty,
+};

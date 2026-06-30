@@ -12,6 +12,7 @@
 | [monetization.md](monetization.md) | Freemium, affiliates, B2B |
 | [roadmap.md](roadmap.md) | **Development roadmap** — POC → multi-site → engine → realtor sharing |
 | [hosting.md](hosting.md) | Firebase vs Azure, $0 architecture, share links |
-| [firebase-setup.md](firebase-setup.md) | Console steps, deploy commands, what's already live |
+| [extraction-checklist.md](extraction-checklist.md) | Manual QA before cost engine |
+| [extraction-decision.md](extraction-decision.md) | Proceed / pivot criteria |
 
 Start with [roadmap.md](roadmap.md) for what to build next.

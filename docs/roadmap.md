@@ -100,11 +100,12 @@ Start FC Tucker as one concrete broker site. RE/MAX may need a **single regional
 
 | Task | Notes |
 |------|-------|
-| [ ] `SiteAdapter` interface in `extension/adapters/types.ts` | `matches(url)`, `extract(): PropertyFacts` |
-| [ ] Zillow adapter v1 | JSON-LD → embedded state → DOM fallback |
+| [x] `SiteAdapter` interface in `extension/adapters/types.ts` | `extract(document, url)` |
+| [x] Zillow adapter v1 | JSON-LD → embedded state → DOM fallback |
 | [ ] FC Tucker adapter v1 | Inspect 2–3 listing templates; save HTML fixtures |
 | [ ] RE/MAX (one office subdomain) adapter v1 | Generalize later |
-| [ ] Adapter version field + error UI | "Could not read price — click to enter" |
+| [x] Adapter version field + error UI | Panel shows missing-field warnings |
+| [x] Fixture tests for Zillow parser | `adapters/zillow/v1.test.ts` |
 | [ ] **API research spike** (time-boxed ½ day) | Document findings in `docs/data-sources.md` |
 
 ### APIs — realistic expectations
@@ -131,13 +132,13 @@ Start FC Tucker as one concrete broker site. RE/MAX may need a **single regional
 
 | Task | Notes |
 |------|-------|
-| [ ] Fixture tests: HTML snippets → expected `PropertyFacts` | No live network in CI |
-| [ ] Manual checklist: 10 listings per site | Spreadsheet of pass/fail |
-| [ ] Confidence scoring per field | `page` / `inferred` / `missing` |
-| [ ] Manual override form in panel | User fills missing price/tax |
-| [ ] Decision doc: proceed / pivot sites | Update this roadmap if a site is untenable |
+| [x] Fixture tests: HTML snippets → expected `PropertyFacts` | Zillow fixtures + partial listing |
+| [x] Manual checklist: 10 listings per site | [extraction-checklist.md](extraction-checklist.md) |
+| [x] Confidence scoring per field | `utils/confidence.ts` + panel badge |
+| [x] Manual override form in panel | Edit / Save / Reset — per-URL `chrome.storage` |
+| [x] Decision doc: proceed / pivot sites | [extraction-decision.md](extraction-decision.md) |
 
-**Exit:** ≥80% of test listings yield price + sqft + beds on Zillow; ≥60% on secondary sites.
+**Exit:** ≥80% of test listings yield price + sqft + beds on Zillow — **you fill the checklist**; then Phase 6.
 
 **Effort:** ~3–5 days (overlaps Phase 4)
 

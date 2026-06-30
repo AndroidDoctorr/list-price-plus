@@ -1,13 +1,24 @@
+import type { PropertyFacts } from '@list-price-plus/core';
+
 export interface SiteDefinition {
   id: string;
   label: string;
   hostPatterns: string[];
   pathPattern: RegExp;
-  /** Manifest match patterns for the content script */
   contentScriptMatches: string[];
+}
+
+export type FieldProvenance = NonNullable<PropertyFacts['fieldProvenance']>[string];
+
+export interface ExtractResult {
+  facts: PropertyFacts;
+  errors: string[];
+  adapterId: string;
+  adapterVersion: string;
 }
 
 export interface SiteAdapter {
   id: string;
-  extract(): Promise<{ facts: unknown; errors: string[] }>;
+  version: string;
+  extract(document: Document, url: string): ExtractResult;
 }

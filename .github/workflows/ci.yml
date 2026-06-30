@@ -35,3 +35,6 @@ jobs:
 
       - name: Build extension (Chrome + Firefox)
         run: pnpm --filter list-price-plus-extension build:all
+
+      - name: Test extension adapters
+        run: pnpm --filter list-price-plus-extension test

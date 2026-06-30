@@ -61,13 +61,14 @@ Edge is Chromium-based. The Chrome build loads directly; no separate build step.
 | Firefox | AMO | Manual review, no fee |
 | Edge | Partner Center | Often reuses Chrome package |
 
-## Current behavior (Phase 2)
+## Current behavior (Phase 5)
 
-- **"List Price Plus · Zillow"** badge on Zillow `/homedetails/` pages only
-- No badge on other sites
-- Popup shows whether the current tab is a supported listing
-- Enable/disable toggle (persists via `chrome.storage.local`)
+- Everything from Phase 4, plus:
+- **Confidence badge** — high / medium / low + short summary
+- **Edit facts** — fix price, sqft, tax, pool, etc.; saved per listing URL
+- **Reset manual edits** — revert to extracted-only data
+- Manual QA: [docs/extraction-checklist.md](../docs/extraction-checklist.md)
 
-Supported sites are defined in `adapters/registry.ts`. More sites added in Phase 4.
+Run tests: `pnpm --filter list-price-plus-extension test`
 
 See [docs/roadmap.md](../docs/roadmap.md) for next phases.

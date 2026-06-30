@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <title>123 Main St | Zillow</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SingleFamilyResidence",
+        "numberOfBedrooms": 4,
+        "numberOfBathroomsTotal": 2.5,
+        "floorSize": { "@type": "QuantitativeValue", "value": 2100 },
+        "yearBuilt": 2005,
+        "offers": {
+          "@type": "Offer",
+          "price": 425000
+        }
+      }
+    </script>
+    <script id="hdpApolloPreloadedData" type="application/json">
+      {
+        "property": {
+          "price": 425000,
+          "livingArea": 2100,
+          "bedrooms": 4,
+          "bathrooms": 2.5,
+          "yearBuilt": 2005,
+          "taxAnnualAmount": 4200,
+          "monthlyHoaFee": 125,
+          "rentZestimate": 2400,
+          "description": "Beautiful home with a swimming pool in the backyard."
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div data-testid="price">$425,000</div>
+    <span>4 bd</span>
+    <span>2.5 ba</span>
+    <span>2,100 sqft</span>
+  </body>
+</html>

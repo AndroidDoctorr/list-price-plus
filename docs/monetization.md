@@ -37,6 +37,7 @@ Revenue options ranked by fit with a trust-first cost estimator.
 - Multiple profiles
 - Priority regional data updates
 - Short-term rental assumptions (when shipped)
+- **Optional: AI field refinement** — on-demand LLM pass for ambiguous listing text (pool vs HOA, missing tax, etc.); user-initiated, not on every page load
 
 ### Team / Agent (~$29–49/mo)
 
