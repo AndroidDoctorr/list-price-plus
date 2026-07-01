@@ -52,12 +52,12 @@ export function downloadClientPdf(input: {
   doc.setFontSize(11);
   doc.setTextColor(100, 116, 139);
   doc.text('ESTIMATED MONTHLY COST', margin, y);
-  y += 16;
+  y += 22;
 
   doc.setFontSize(28);
   doc.setTextColor(15, 118, 110);
   doc.text(`${formatCurrency(estimate.monthlyTotal.mid)}/mo`, margin, y);
-  y += 18;
+  y += 36;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);

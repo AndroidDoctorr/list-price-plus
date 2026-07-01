@@ -40,6 +40,26 @@ body {
   font-size: 1.125rem;
 }
 
+.install-actions {
+  margin-top: 20px;
+}
+
+.install-btn {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.install-btn:hover {
+  background: #0d9488;
+  color: #fff;
+}
+
 .card {
   margin-top: 32px;
   padding: 24px;

@@ -1,5 +1,6 @@
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { CHROME_STORE_URL } from './config';
 import { PageShell } from './PageShell';
 import { PrivacyPage } from './PrivacyPage';
 import { SharedReportView } from './ReportView';
@@ -21,6 +22,18 @@ function HomePage() {
             Realistic monthly property costs — mortgage, taxes, utilities,
             maintenance, and major repairs — on the listing page.
           </p>
+          {CHROME_STORE_URL ? (
+            <div className="install-actions">
+              <a
+                className="install-btn"
+                href={CHROME_STORE_URL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Install for Chrome
+              </a>
+            </div>
+          ) : null}
         </header>
         <section className="card">
           <h2>For realtors</h2>

@@ -129,15 +129,82 @@ Chrome will ask why you need each permission. Paste-ready answers:
 
 ## 6. Privacy practices questionnaire (Chrome)
 
-Typical answers for List Price Plus MVP:
+Chrome Web Store → **Privacy** tab. Answers below match List Price Plus MVP.
+
+### Single purpose
+
+**Does your extension have a single purpose?**  
+Yes.
+
+**Single purpose description:**
+```
+Shows realistic monthly property cost estimates on supported real estate listing pages (Zillow, FC Tucker, Redfin, Realtor.com).
+```
+
+---
+
+### Permission justifications (if prompted separately)
+
+| Permission | User-facing justification |
+|------------|---------------------------|
+| `storage` | Save your cost assumptions, realtor profile, and per-listing edits on your device. |
+| `activeTab` | Detect when you're on a supported listing page so the cost panel can appear. |
+| `clipboardWrite` | Copy a client share link when you tap Share with client or Copy link again. |
+| Host: listing sites | Read public listing details (price, beds, baths, sqft, tax) from the page you opened to calculate estimates. |
+| Host: firestore.googleapis.com | Save an optional shared client report when you explicitly tap Share with client. |
+
+---
+
+### Data use certification
+
+**Does this extension collect or transmit user data?**  
+Select: **Yes**, the extension collects or transmits user data.
+
+(Chrome requires "Yes" because shared reports include realtor contact info and property data sent to Firebase when the user explicitly shares.)
+
+---
+
+### Data types collected
+
+Check only what applies:
+
+| Data type | Collected? | Notes |
+|-----------|------------|-------|
+| **Personally identifiable information** | Yes (optional) | Realtor name, phone, email — only when Share with client is used; stored in Firestore report |
+| **Financial / payment info** | No | Estimates only; no payment processing |
+| **Authentication information** | No | No login in MVP |
+| **Personal communications** | No | |
+| **Location** | No | Does not read GPS; listing pages may imply city/state from URL |
+| **Web history** | No | Only reads the active tab when it's a supported listing URL |
+| **User activity** | No | No analytics in MVP |
+| **Website content** | Yes | Public listing facts read from the open listing page |
+
+---
+
+### Data handling
 
 | Question | Answer |
 |----------|--------|
-| Collects personal data? | **Yes** — but only when realtor explicitly shares (name, phone, email in report branding). Local profile stays on device. |
-| Data encrypted in transit? | **Yes** (HTTPS to Firebase) |
-| Data sold? | **No** |
-| Purpose | App functionality |
-| Privacy policy URL | https://list-price-plus.web.app/privacy |
+| **Is data sold to third parties?** | No |
+| **Is data used for purposes unrelated to the extension's single purpose?** | No |
+| **Is data used for creditworthiness or lending decisions?** | No |
+| **Encrypted in transit?** | Yes (HTTPS to Firebase Hosting and Firestore) |
+| **Privacy policy URL** | https://list-price-plus.web.app/privacy |
+
+---
+
+### Developer program policy
+
+Certify that:
+- The privacy policy accurately describes data handling
+- The extension requests minimum permissions needed
+- You comply with Chrome Web Store policies
+
+---
+
+### Contact email
+
+Use the same address as your privacy policy (e.g. `hello@listpriceplus.app`). Google may email you here during review.
 
 ---
 
@@ -145,7 +212,7 @@ Typical answers for List Price Plus MVP:
 
 ```bash
 # 1. Ensure API key is in extension/.env
-# 2. Bump version in extension/package.json (e.g. 0.1.0 → 1.0.0 for first store release)
+# 2. Bump version in extension/package.json (e.g. 1.0.0 for first store release)
 
 pnpm --filter list-price-plus-extension zip
 # Output: extension/.output/list-price-plus-extension-*.zip (or chrome-mv3.zip)
@@ -173,8 +240,9 @@ Submit XPI to AMO with same privacy URL and descriptions. Review can take **seve
 
 ## 9. After approval
 
+- [ ] Copy Chrome Web Store URL → `web/.env` as `VITE_CHROME_STORE_URL=...`
+- [ ] `pnpm deploy:hosting` — **Install for Chrome** button appears on homepage
 - [ ] Send mom the **unlisted install link**
-- [ ] Add “Install extension” to https://list-price-plus.web.app (link to store URL)
 - [ ] Git tag release (e.g. `extension-v1.0.0`)
 - [ ] Keep a changelog of what each store version contains
 
