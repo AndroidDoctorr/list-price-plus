@@ -17,7 +17,9 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@list-price-plus/core": "workspace:*"
+    "@list-price-plus/core": "workspace:*",
+    "firebase": "^11.10.0",
+    "jspdf": "^3.0.1"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

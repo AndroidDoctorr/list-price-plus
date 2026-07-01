@@ -61,13 +61,32 @@ Edge is Chromium-based. The Chrome build loads directly; no separate build step.
 | Firefox | AMO | Manual review, no fee |
 | Edge | Partner Center | Often reuses Chrome package |
 
-## Current behavior (Phase 6)
+## Current behavior (Phase 7)
 
-- Property facts panel + **estimated monthly cost** (mortgage, tax, insurance, utilities, maintenance, capex reserve, pool)
+- Property facts panel + **estimated monthly cost** on **Zillow**, **FC Tucker** (talktotucker.com), **Redfin**, and **Realtor.com**
 - Expandable **monthly breakdown** and **upcoming major expenses**
 - Popup **Your assumptions**: spending style, credit tier, down payment %, loan term
-- Change assumptions → listing panel updates on refresh
+- **Realtor mode**: agent profile + **Share with client** → Firestore link + branded PDF download
 
 Run tests: `pnpm --filter @list-price-plus/core test` · `pnpm --filter list-price-plus-extension test`
 
-See [docs/roadmap.md](../docs/roadmap.md) for next phases.
+### Realtor sharing setup
+
+1. **Firebase Console** → Project `list-price-plus` → enable **Firestore** (production mode).
+2. Deploy security rules: `pnpm deploy:firestore` (from repo root).
+3. **Project settings → Your apps** → copy the Web API key into **two separate files**:
+   - `extension/.env` (inside the `extension/` folder, not repo root) → `WXT_FIREBASE_API_KEY=…`
+   - `web/.env` → `VITE_FIREBASE_API_KEY=…`
+   - The extension also accepts `VITE_FIREBASE_API_KEY` in `extension/.env`, but the file must live under `extension/`.
+4. Rebuild the extension after creating or changing `extension/.env`:
+   - Dev: `pnpm dev` → load unpacked from `extension/.output/chrome-mv3-dev`
+   - Production build: `pnpm build:extension` → load unpacked from `extension/.output/chrome-mv3`
+   - Env vars are baked in at build time — reloading Chrome without rebuilding is not enough.
+5. Deploy the web app: `pnpm deploy:hosting`
+6. In the popup: fill **Realtor profile**, enable **Realtor mode**, open a listing, tap **Share with client**.
+
+The share link is copied to clipboard and a PDF downloads. Clients open `https://list-price-plus.web.app/r/{uuid}`.
+
+Privacy policy (required for store listing): https://list-price-plus.web.app/privacy  
+Store submission checklist: [docs/store-listing.md](../docs/store-listing.md)  
+Next site adapters: [docs/site-priority.md](../docs/site-priority.md)

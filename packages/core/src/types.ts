@@ -1,6 +1,6 @@
 /** Property attributes extracted from a listing or entered manually. */
 export interface PropertyFacts {
-  source: 'zillow' | 'manual' | 'redfin' | 'realtor';
+  source: 'zillow' | 'manual' | 'redfin' | 'realtor' | 'fctucker';
   sourceUrl?: string;
   listPrice?: number;
   sqft?: number;
@@ -82,4 +82,27 @@ export interface CostEstimate {
 
 export interface EstimateOptions {
   asOfDate?: Date;
+}
+
+/** Realtor branding copied into shared client reports. */
+export interface AgentBranding {
+  name: string;
+  brokerage: string;
+  phone: string;
+  email: string;
+  photoUrl?: string;
+  logoUrl?: string;
+}
+
+/** Firestore document for a client share link. */
+export interface SharedReport {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  branding: AgentBranding;
+  sourceUrl: string;
+  propertyFacts: PropertyFacts;
+  profileSnapshot: UserProfile;
+  estimate: CostEstimate;
+  listingTitle?: string;
 }

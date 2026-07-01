@@ -102,8 +102,10 @@ Start FC Tucker as one concrete broker site. RE/MAX may need a **single regional
 |------|-------|
 | [x] `SiteAdapter` interface in `extension/adapters/types.ts` | `extract(document, url)` |
 | [x] Zillow adapter v1 | JSON-LD → embedded state → DOM fallback |
-| [ ] FC Tucker adapter v1 | Inspect 2–3 listing templates; save HTML fixtures |
+| [x] FC Tucker adapter v1 | talktotucker.com — JSON-LD + Next data + DOM |
 | [ ] RE/MAX (one office subdomain) adapter v1 | Generalize later |
+| [x] Redfin adapter v1 | `/home/{id}` listing pages |
+| [x] Realtor.com adapter v1 | `/realestateandhomes-detail/` pages |
 | [x] Adapter version field + error UI | Panel shows missing-field warnings |
 | [x] Fixture tests for Zillow parser | `adapters/zillow/v1.test.ts` |
 | [ ] **API research spike** (time-boxed ½ day) | Document findings in `docs/data-sources.md` |
@@ -194,12 +196,12 @@ sequenceDiagram
 
 | Task | Notes |
 |------|-------|
-| [ ] Agent profile in extension: name, photo URL, brokerage, phone, logo | `chrome.storage.local` |
-| [ ] **"Share with client"** button fixed top of page (realtor-only mode toggle) | Prominent, one tap |
-| [ ] Client PDF: breakdown + capex timeline + agent footer + disclaimer | **jsPDF in extension** → $0 |
-| [ ] Create report: `POST` write to Firestore (or callable Function) → returns `uuid` | See [hosting.md](hosting.md) |
-| [ ] Share URL: `https://{your-domain}/r/{uuid}` | |
-| [ ] Web route `/r/:id` reads doc, renders read-only report | Vite/React placeholder is fine |
+| [x] Agent profile in extension: name, photo URL, brokerage, phone, logo | `chrome.storage.local` |
+| [x] **"Share with client"** button fixed top of page (realtor-only mode toggle) | Prominent, one tap |
+| [x] Client PDF: breakdown + capex timeline + agent footer + disclaimer | **jsPDF in extension** → $0 |
+| [x] Create report: write to Firestore → returns `uuid` | Direct write + rules (callable Function in Phase 8) |
+| [x] Share URL: `https://{your-domain}/r/{uuid}` | |
+| [x] Web route `/r/:id` reads doc, renders read-only report | Vite/React |
 | [ ] Optional: short slug later | Not needed for POC |
 
 **Exit:** Mom opens a listing, taps share, sends link + PDF to a test client; client opens link on phone.
@@ -238,10 +240,10 @@ Details: [hosting.md](hosting.md)
 
 | Task | Notes |
 |------|-------|
-| [ ] Privacy policy page | Required for stores |
-| [ ] Chrome Web Store + Firefox AMO (unlisted or public) | $5 Chrome one-time fee |
+| [x] Privacy policy page | https://list-price-plus.web.app/privacy |
+| [ ] Chrome Web Store + Firefox AMO (unlisted or public) | See [store-listing.md](store-listing.md) |
 | [ ] Error reporting (optional, opt-in) | Which adapter failed |
-| [ ] Expire old report links (90 days) | Firestore TTL policy |
+| [x] Expire old report links (90 days) | Web check + Timestamp for Firestore TTL — [firestore-ttl.md](firestore-ttl.md) |
 | [ ] Mom dogfoods for 2 weeks | Feedback → profile defaults |
 
 **Effort:** ~1 week

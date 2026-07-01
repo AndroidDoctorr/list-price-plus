@@ -85,6 +85,17 @@ h1 {
   color: #0f172a;
 }
 
+.realtor-section {
+  margin-top: 4px;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
 .version {
   margin: 12px 0 0;
   font-size: 0.75rem;

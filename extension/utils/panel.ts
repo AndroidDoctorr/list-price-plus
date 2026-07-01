@@ -14,6 +14,7 @@ import {
   formDefaults,
   overridesFromForm,
 } from '@/utils/overrides';
+import { copyTextToClipboard } from '@/utils/share-report';
 import type { CostEstimate, PropertyFacts } from '@list-price-plus/core';
 
 export const PANEL_HOST_ID = 'lpp-listing-panel';
@@ -36,11 +37,20 @@ export interface PanelHandlers {
   onResetOverrides: () => Promise<void>;
   onEditingChange?: (editing: boolean) => void;
   onCollapsedChange?: (collapsed: boolean) => void;
+  onShareWithClient?: () => Promise<string>;
+}
+
+export interface PanelOptions {
+  realtorMode?: boolean;
+  listingUrl?: string;
 }
 
 interface PanelHost extends HTMLDivElement {
   __lppHandlers?: PanelHandlers;
   __lppFactsExpanded?: boolean;
+  __lppCurrentListingUrl?: string;
+  __lppLastShareUrl?: string;
+  __lppShareListingUrl?: string;
 }
 
 /** Skip Zillow refresh when the only DOM change was our panel mounting. */
@@ -250,17 +260,44 @@ function updateErrorsBlock(factsInner: Element, errors: string[]): void {
   else factsInner.append(errorsEl);
 }
 
-function syncCostSection(bodyScroll: Element, estimate?: CostEstimate): void {
+function syncCostSection(
+  bodyScroll: Element,
+  estimate?: CostEstimate,
+  showShare?: boolean,
+): void {
   bodyScroll.querySelector('.cost-section')?.remove();
   if (!estimate) return;
 
   const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildCostSectionHtml(estimate);
+  wrapper.innerHTML = buildCostSectionHtml(estimate, { showShare });
   const section = wrapper.firstElementChild;
   if (section) {
     section.classList.add('cost-section-first');
     bodyScroll.insertBefore(section, bodyScroll.firstChild);
   }
+}
+
+function setShareStatus(shadow: ShadowRoot, message: string, kind: 'success' | 'error' | ''): void {
+  const status = shadow.querySelector('.share-status');
+  if (!(status instanceof HTMLElement)) return;
+  if (!message) {
+    status.hidden = true;
+    status.textContent = '';
+    status.removeAttribute('data-kind');
+    return;
+  }
+  status.hidden = false;
+  status.textContent = message;
+  status.dataset.kind = kind;
+}
+
+function restoreCopyLinkUi(shadow: ShadowRoot, host: PanelHost): void {
+  const wrap = shadow.querySelector('.share-actions-secondary');
+  if (!(wrap instanceof HTMLElement)) return;
+  const canCopy =
+    Boolean(host.__lppLastShareUrl) &&
+    host.__lppShareListingUrl === host.__lppCurrentListingUrl;
+  wrap.hidden = !canCopy;
 }
 
 function syncFactsSectionOpen(
@@ -282,6 +319,7 @@ function updatePanelContent(
   result: ExtractResult,
   siteLabel: string,
   costEstimate?: CostEstimate,
+  options?: PanelOptions,
 ): void {
   const confidence = scoreExtractionConfidence(result.facts);
   const editing = shadow.querySelector('.edit-form:not([hidden])') !== null;
@@ -309,8 +347,16 @@ function updatePanelContent(
 
   const factsInner = shadow.querySelector('.facts-inner');
   const bodyScroll = shadow.querySelector('.body-scroll');
+  host.__lppCurrentListingUrl = options?.listingUrl;
   if (factsInner) updateErrorsBlock(factsInner, result.errors);
-  if (bodyScroll) syncCostSection(bodyScroll, costEstimate);
+  if (bodyScroll) {
+    syncCostSection(
+      bodyScroll,
+      costEstimate,
+      Boolean(options?.realtorMode && costEstimate),
+    );
+    restoreCopyLinkUi(shadow, host);
+  }
   syncFactsSectionOpen(
     factsSection instanceof HTMLDetailsElement ? factsSection : null,
     costEstimate,
@@ -377,6 +423,43 @@ function wirePanelEvents(shadow: ShadowRoot, host: PanelHost): void {
   resetBtn.addEventListener('click', () => {
     void host.__lppHandlers?.onResetOverrides();
   });
+
+  shadow.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.classList.contains('copy-link-btn')) {
+      const url = host.__lppLastShareUrl;
+      if (!url) return;
+      void copyTextToClipboard(url)
+        .then(() => setShareStatus(shadow, 'Link copied to clipboard', 'success'))
+        .catch(() => setShareStatus(shadow, 'Could not copy link', 'error'));
+      return;
+    }
+
+    if (!target.classList.contains('share-btn')) return;
+    const handler = host.__lppHandlers?.onShareWithClient;
+    if (!handler) return;
+
+    target.setAttribute('disabled', 'true');
+    setShareStatus(shadow, '', '');
+
+    void handler()
+      .then((shareUrl) => {
+        host.__lppLastShareUrl = shareUrl;
+        host.__lppShareListingUrl = host.__lppCurrentListingUrl;
+        restoreCopyLinkUi(shadow, host);
+        setShareStatus(shadow, 'Link copied · PDF downloaded', 'success');
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : 'Could not share report.';
+        setShareStatus(shadow, message, 'error');
+      })
+      .finally(() => {
+        target.removeAttribute('disabled');
+      });
+  });
 }
 
 function createPanel(
@@ -384,6 +467,7 @@ function createPanel(
   siteLabel: string,
   handlers: PanelHandlers,
   costEstimate?: CostEstimate,
+  options?: PanelOptions,
 ): PanelHost {
   const confidence = scoreExtractionConfidence(result.facts);
   const host = document.createElement('div') as PanelHost;
@@ -490,7 +574,13 @@ function createPanel(
   factsSection.append(factsSummary, factsInner);
   bodyScroll.append(factsSection);
   updateErrorsBlock(factsInner, result.errors);
-  syncCostSection(bodyScroll, costEstimate);
+  syncCostSection(
+    bodyScroll,
+    costEstimate,
+    Boolean(options?.realtorMode && costEstimate),
+  );
+  host.__lppCurrentListingUrl = options?.listingUrl;
+  restoreCopyLinkUi(shadow, host);
 
   body.append(bodyScroll);
   shell.append(header, body);
@@ -509,15 +599,16 @@ export function showListingPanel(
   siteLabel: string,
   handlers: PanelHandlers,
   costEstimate?: CostEstimate,
+  options?: PanelOptions,
 ): void {
   const existing = document.getElementById(PANEL_HOST_ID) as PanelHost | null;
 
   if (existing?.shadowRoot) {
     existing.__lppHandlers = handlers;
-    updatePanelContent(existing.shadowRoot, result, siteLabel, costEstimate);
+    updatePanelContent(existing.shadowRoot, result, siteLabel, costEstimate, options);
     return;
   }
 
-  const host = createPanel(result, siteLabel, handlers, costEstimate);
+  const host = createPanel(result, siteLabel, handlers, costEstimate, options);
   (document.body ?? document.documentElement).append(host);
 }

@@ -1,6 +1,13 @@
 import { getAdapterForSite } from '@/adapters';
 import { getContentScriptMatches, getSiteForUrl } from '@/adapters/registry';
+import {
+  isAgentProfileComplete,
+  loadAgentProfile,
+  loadRealtorMode,
+} from '@/utils/agent-profile';
 import { isExtensionEnabled } from '@/utils/badge';
+import { isFirebaseConfigured } from '@/utils/firebase';
+import { downloadClientPdf } from '@/utils/pdf-report';
 import {
   applyOverrides,
   clearOverridesForUrl,
@@ -13,6 +20,7 @@ import {
   removeListingPanel,
   showListingPanel,
 } from '@/utils/panel';
+import { copyTextToClipboard, publishSharedReport } from '@/utils/share-report';
 import { estimateMonthlyCosts } from '@list-price-plus/core';
 
 export default defineContentScript({
@@ -50,6 +58,8 @@ export default defineContentScript({
 
       const profile = await loadUserProfile();
       const costEstimate = estimateMonthlyCosts(facts, profile);
+      const realtorMode = await loadRealtorMode();
+      const listingTitle = document.title.replace(/\s*\|\s*Zillow.*$/i, '').trim();
 
       showListingPanel(result, site.label, {
         onEditingChange(editing) {
@@ -72,7 +82,42 @@ export default defineContentScript({
           await clearOverridesForUrl(location.href);
           await refresh();
         },
-      }, costEstimate);
+        onShareWithClient: async () => {
+          if (!isFirebaseConfigured()) {
+            throw new Error(
+              'Firebase is not configured. Add the API key to extension/.env (WXT_FIREBASE_API_KEY or VITE_FIREBASE_API_KEY), then rebuild the extension.',
+            );
+          }
+
+          const branding = await loadAgentProfile();
+          if (!isAgentProfileComplete(branding)) {
+            throw new Error(
+              'Complete your realtor profile in the extension popup first.',
+            );
+          }
+
+          const { shareUrl } = await publishSharedReport({
+            branding,
+            sourceUrl: location.href,
+            propertyFacts: facts,
+            profileSnapshot: profile,
+            estimate: costEstimate,
+            listingTitle: listingTitle || undefined,
+          });
+
+          downloadClientPdf({
+            listingTitle: listingTitle || undefined,
+            sourceUrl: location.href,
+            facts,
+            estimate: costEstimate,
+            branding,
+            shareUrl,
+          });
+
+          await copyTextToClipboard(shareUrl);
+          return shareUrl;
+        },
+      }, costEstimate, { realtorMode, listingUrl: location.href });
     }
 
     function scheduleRefresh() {
@@ -92,7 +137,9 @@ export default defineContentScript({
           area === 'local' &&
           ('enabled' in changes ||
             'listingOverrides' in changes ||
-            'userProfile' in changes)
+            'userProfile' in changes ||
+            'agentProfile' in changes ||
+            'realtorMode' in changes)
         ) {
           if (isEditingFacts) {
             pendingRefresh = true;

@@ -2,7 +2,29 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Locked down until Phase 8 agent auth + createReport callable.
+    match /reports/{reportId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.id == reportId
+        && request.resource.data.keys().hasAll([
+          'id',
+          'createdAt',
+          'expiresAt',
+          'branding',
+          'sourceUrl',
+          'propertyFacts',
+          'profileSnapshot',
+          'estimate'
+        ])
+        && request.resource.data.branding.keys().hasAll([
+          'name',
+          'brokerage',
+          'phone',
+          'email'
+        ]);
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

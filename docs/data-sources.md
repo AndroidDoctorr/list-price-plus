@@ -39,9 +39,11 @@ Each field records `fieldProvenance` for UI ("Tax: from listing", "Pool: inferre
 
 | Site | Priority | Notes |
 |------|----------|-------|
-| Redfin | P2 | Similar data richness |
-| Realtor.com | P2 | MLS-backed facts |
-| Trulia | P3 | Zillow Group; may share patterns |
+| **FC Tucker** | P1 | Indiana broker — see [site-priority.md](site-priority.md) |
+| **Redfin** | P1 | Similar data richness to Zillow |
+| **Realtor.com** | P1 | MLS-backed facts |
+| Trulia | P2 | Zillow Group; may share patterns |
+| Homes.com | P2 | National portal |
 | Apartments.com | P3 | Renter-focused; different cost model |
 
 Adapter interface:

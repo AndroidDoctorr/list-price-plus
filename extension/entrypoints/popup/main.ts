@@ -2,11 +2,18 @@ import './style.css';
 
 import { getSiteForUrl } from '@/adapters/registry';
 import {
+  loadAgentProfile,
+  loadRealtorMode,
+  notifyAllContentScripts,
+  saveAgentProfile,
+  saveRealtorMode,
+} from '@/utils/agent-profile';
+import {
   loadUserProfile,
   notifyContentScripts,
   saveUserProfile,
 } from '@/utils/profile-storage';
-import type { UserProfile } from '@list-price-plus/core';
+import type { AgentBranding, UserProfile } from '@list-price-plus/core';
 
 const statusEl = document.querySelector<HTMLParagraphElement>('#status')!;
 const pageEl = document.querySelector<HTMLParagraphElement>('#page-status')!;
@@ -15,6 +22,12 @@ const spendingEl = document.querySelector<HTMLSelectElement>('#spendingStyle')!;
 const creditEl = document.querySelector<HTMLSelectElement>('#creditTier')!;
 const downEl = document.querySelector<HTMLInputElement>('#downPayment')!;
 const termEl = document.querySelector<HTMLSelectElement>('#loanTerm')!;
+const realtorModeEl = document.querySelector<HTMLInputElement>('#realtorMode')!;
+const agentNameEl = document.querySelector<HTMLInputElement>('#agentName')!;
+const agentBrokerageEl = document.querySelector<HTMLInputElement>('#agentBrokerage')!;
+const agentPhoneEl = document.querySelector<HTMLInputElement>('#agentPhone')!;
+const agentEmailEl = document.querySelector<HTMLInputElement>('#agentEmail')!;
+const agentLogoUrlEl = document.querySelector<HTMLInputElement>('#agentLogoUrl')!;
 
 async function loadSettings() {
   const { enabled } = await browser.storage.local.get('enabled');
@@ -27,6 +40,15 @@ async function loadSettings() {
   creditEl.value = profile.creditTier;
   downEl.value = String(profile.downPaymentPercent);
   termEl.value = String(profile.loanTermYears);
+
+  realtorModeEl.checked = await loadRealtorMode();
+
+  const agent = await loadAgentProfile();
+  agentNameEl.value = agent.name;
+  agentBrokerageEl.value = agent.brokerage;
+  agentPhoneEl.value = agent.phone;
+  agentEmailEl.value = agent.email;
+  agentLogoUrlEl.value = agent.logoUrl ?? '';
 }
 
 async function persistProfile() {
@@ -39,6 +61,18 @@ async function persistProfile() {
   };
   await saveUserProfile(profile);
   await notifyContentScripts();
+}
+
+async function persistAgentProfile() {
+  const profile: AgentBranding = {
+    name: agentNameEl.value.trim(),
+    brokerage: agentBrokerageEl.value.trim(),
+    phone: agentPhoneEl.value.trim(),
+    email: agentEmailEl.value.trim(),
+    logoUrl: agentLogoUrlEl.value.trim() || undefined,
+  };
+  await saveAgentProfile(profile);
+  await notifyAllContentScripts();
 }
 
 async function updatePageStatus() {
@@ -56,7 +90,8 @@ async function updatePageStatus() {
     pageEl.textContent = `Active on ${site.label} listing.`;
     pageEl.dataset.state = 'active';
   } else {
-    pageEl.textContent = 'Go to a Zillow listing page to use List Price Plus.';
+    pageEl.textContent =
+      'Go to a supported listing (Zillow, FC Tucker, Redfin, or Realtor.com).';
     pageEl.dataset.state = 'idle';
   }
 }
@@ -70,6 +105,21 @@ toggleEl.addEventListener('change', async () => {
 
 for (const el of [spendingEl, creditEl, downEl, termEl]) {
   el.addEventListener('change', () => void persistProfile());
+}
+
+realtorModeEl.addEventListener('change', async () => {
+  await saveRealtorMode(realtorModeEl.checked);
+  await notifyAllContentScripts();
+});
+
+for (const el of [
+  agentNameEl,
+  agentBrokerageEl,
+  agentPhoneEl,
+  agentEmailEl,
+  agentLogoUrlEl,
+]) {
+  el.addEventListener('change', () => void persistAgentProfile());
 }
 
 void loadSettings();

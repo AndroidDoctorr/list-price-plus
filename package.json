@@ -9,7 +9,8 @@
     "build:extension": "pnpm --filter list-price-plus-extension build:all",
     "build:web": "pnpm --filter list-price-plus-web build",
     "compile": "pnpm -r compile",
-    "deploy:hosting": "pnpm build:web && firebase deploy --only hosting"
+    "deploy:hosting": "pnpm build:web && firebase deploy --only hosting",
+    "deploy:firestore": "firebase deploy --only firestore:rules"
   },
   "engines": {
     "node": ">=20"

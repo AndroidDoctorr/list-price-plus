@@ -127,6 +127,28 @@ export function parseEmbeddedJsonScripts(doc: Document): unknown[] {
   return results;
 }
 
+/** Parse JSON assigned to window variables in inline scripts (e.g. Redfin preloaded state). */
+export function parseInlineJsonAssignments(
+  doc: Document,
+  patterns: RegExp[],
+): unknown[] {
+  const results: unknown[] = [];
+  for (const script of doc.querySelectorAll('script:not([src])')) {
+    const text = script.textContent ?? '';
+    if (text.length < 40) continue;
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (!match?.[1]) continue;
+      try {
+        results.push(JSON.parse(match[1]));
+      } catch {
+        // ignore malformed assignments
+      }
+    }
+  }
+  return results;
+}
+
 export type PoolSignal = 'property' | 'community' | undefined;
 
 /** Distinguish a pool on the property vs a shared HOA/community amenity. */

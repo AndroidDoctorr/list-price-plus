@@ -55,6 +55,41 @@
         </label>
       </section>
 
+      <section class="profile-section realtor-section">
+        <label class="toggle">
+          <input id="realtorMode" type="checkbox" />
+          <span>Realtor mode</span>
+        </label>
+        <p class="hint">Shows “Share with client” on listings and uses your branding on PDFs and links.</p>
+
+        <h2>Realtor profile</h2>
+
+        <label class="field">
+          <span>Your name</span>
+          <input id="agentName" type="text" autocomplete="name" placeholder="Jane Smith" />
+        </label>
+
+        <label class="field">
+          <span>Brokerage</span>
+          <input id="agentBrokerage" type="text" autocomplete="organization" placeholder="Acme Realty" />
+        </label>
+
+        <label class="field">
+          <span>Phone</span>
+          <input id="agentPhone" type="tel" autocomplete="tel" placeholder="(555) 555-5555" />
+        </label>
+
+        <label class="field">
+          <span>Email</span>
+          <input id="agentEmail" type="email" autocomplete="email" placeholder="jane@example.com" />
+        </label>
+
+        <label class="field">
+          <span>Logo URL (optional)</span>
+          <input id="agentLogoUrl" type="url" placeholder="https://…" />
+        </label>
+      </section>
+
       <p class="version">v0.1.0</p>
     </main>
     <script type="module" src="./main.ts"></script>
